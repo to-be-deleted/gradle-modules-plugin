@@ -12,7 +12,7 @@ buildScan {
     termsOfServiceAgree = 'yes'
 }
 
-group 'org.javamodularity'
+group 'org.beryx'
 version '1.7.1-SNAPSHOT'
 
 sourceCompatibility = 11
@@ -107,7 +107,7 @@ pluginBundle {
 publishing { // used for publishing to local maven repository
     publications {
         maven(MavenPublication) {
-            groupId = 'org.javamodularity'
+            groupId = 'org.beryx'
             artifactId = 'moduleplugin'
             version = project.version
         }
