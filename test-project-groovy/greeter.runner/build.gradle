@@ -1,0 +1,28 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':greeter.api')
+    runtimeOnly project(':greeter.provider')
+}
+
+application {
+    mainClassName = "$moduleName/examples.Runner"
+    applicationDefaultJvmArgs = ['-Dgreeter.sender=gradle-modules-plugin']
+}
+
+modularity {
+    patchModule('java.annotation', 'jsr305-3.0.2.jar')
+}
+patchModules.config = [
+        'java.annotation=jsr250-api-1.0.jar'
+]
+
+run {
+    moduleOptions {
+        addModules = ['java.sql']
+    }
+
+    jvmArgs = ['-Dgreeter.sender=gradle-modules-plugin']
+}

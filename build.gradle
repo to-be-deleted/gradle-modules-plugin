@@ -1,0 +1,115 @@
+plugins {
+    id 'eclipse'
+    id 'java-gradle-plugin'
+    id 'maven-publish' // used for publishing to local maven repository
+    id 'com.gradle.plugin-publish' version '0.12.0'
+    id 'com.github.johnrengelman.shadow' version '5.0.0'
+    id 'com.github.ben-manes.versions' version '0.21.0'
+}
+
+buildScan {
+    termsOfServiceUrl   = 'https://gradle.com/terms-of-service'
+    termsOfServiceAgree = 'yes'
+}
+
+group 'org.javamodularity'
+version '1.7.1-SNAPSHOT'
+
+sourceCompatibility = 11
+targetCompatibility = 11
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    plugin.description = "Plugin's dependencies"
+    compile.extendsFrom plugin
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation 'org.jooq:joor:0.9.13'
+    plugin 'com.github.javaparser:javaparser-symbol-solver-core:3.13.5'
+
+    testImplementation gradleTestKit()
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.4.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.4.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.4.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.4.1' // required when testing in Eclipse
+}
+
+shadowJar {
+    configurations = [project.configurations.plugin]
+    classifier = null
+    dependencies {
+        include(dependency('com.github.javaparser:javaparser-symbol-solver-core'))
+        include(dependency('com.github.javaparser:javaparser-symbol-solver-logic'))
+        include(dependency('com.github.javaparser:javaparser-symbol-solver-model'))
+        include(dependency('com.github.javaparser:javaparser-core'))
+    }
+    relocate 'com.github.javaparser', 'org.javamodularity.moduleplugin.shadow.javaparser'
+}
+
+jar.enabled = false
+jar.dependsOn shadowJar
+
+configurations {
+    [apiElements, runtimeElements].each {
+        it.outgoing.artifacts.removeIf { it.buildDependencies.getDependencies(null).contains(jar) }
+        it.outgoing.artifact(shadowJar)
+    }
+}
+
+test {
+    useJUnitPlatform()
+
+    testLogging {
+        events 'PASSED', 'FAILED', 'SKIPPED'
+        stackTraceFilters = []
+    }
+}
+
+task createClasspathManifest {
+    File outputDir = file("$buildDir/$name")
+
+    inputs.files sourceSets.main.runtimeClasspath
+    outputs.dir outputDir
+
+    doLast {
+        outputDir.mkdirs()
+        file("$outputDir/plugin-classpath.txt").text = sourceSets.main.runtimeClasspath.join('\n')
+    }
+}
+
+// Add the classpath file to the test runtime classpath
+dependencies {
+    testRuntimeOnly files(createClasspathManifest)
+}
+
+gradlePlugin {
+    plugins {
+        modulesPlugin {
+            id = 'org.beryx.gmpdummy'
+            displayName = 'Java Modularity Gradle Plugin'
+            description = 'Plugin that makes it easy to work with the Java Platform Module System'
+            implementationClass = 'org.javamodularity.moduleplugin.ModuleSystemPlugin'
+        }
+    }
+}
+
+pluginBundle {
+    website = 'https://github.com/to-be-deleted/gradle-modules-plugin'
+    vcsUrl = 'https://github.com/to-be-deleted/gradle-modules-plugin'
+    tags = ['dummy']
+}
+
+publishing { // used for publishing to local maven repository
+    publications {
+        maven(MavenPublication) {
+            groupId = 'org.javamodularity'
+            artifactId = 'moduleplugin'
+            version = project.version
+        }
+    }
+}
